@@ -1,0 +1,231 @@
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+label,
+button,
+input,
+textarea,
+pre,
+footer {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Helvetica Neue", Arial, sans-serif;
+  color: #333;
+  line-height: 1.5;
+}
+
+body {
+  margin: 1.2rem auto;
+  background-color: #fafafa;
+  max-width: 80%;
+  text-align: center;
+  font-size: 16px;
+}
+
+h2,
+h3,
+p,
+label,
+footer {
+  text-align: center;
+}
+
+h2 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: #3498db;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+h2::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background-color: #3498db;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+  color: #34495e;
+}
+
+.logo {
+  height: 250px;
+  width: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+textarea {
+  width: 100%;
+  height: 200px;
+  min-height: 200px;
+  max-height: 400px;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-top: 0.25rem;
+  transition: border-color 0.2s;
+  text-align: left;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+button {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: inherit;
+}
+
+button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+button:active:not(:disabled) {
+  background-color: #1c6ea4;
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #95a5a6;
+}
+
+pre {
+  background: #f8f9fa;
+  padding: 1rem;
+  white-space: pre-wrap;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  max-height: 500px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+label[for="affilInput"] {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+p {
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Hide results section initially */
+#results-section {
+  display: none;
+}
+
+#results-section.visible {
+  display: block;
+}
+
+/* PubMedBridge link styling */
+.clickable-link {
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+}
+
+.clickable-link:hover {
+  color: #1a73e8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Footer styling */
+footer {
+  margin-top: 2rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ddd;
+  font-size: 0.9rem;
+  color: #666;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Responsive design for small screens */
+@media (max-width: 768px) {
+  body {
+    max-width: 95%;
+    margin: 1rem auto;
+    font-size: 14px;
+  }
+
+  .logo {
+    height: 150px;
+  }
+
+  h2 {
+    font-size: 2rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  textarea {
+    font-size: 13px;
+    height: 150px;
+    min-height: 150px;
+  }
+
+  button {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  pre {
+    font-size: 13px;
+    padding: 0.75rem;
+  }
+
+  footer {
+    max-width: 95%;
+    font-size: 0.85rem;
+  }
+}

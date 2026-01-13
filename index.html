@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PubMed Affiliation Country Resolver</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="../images/favicon-96x96.png"
+      sizes="96x96"
+    />
+    <link rel="icon" type="image/svg+xml" href="../images/favicon.svg" />
+    <link rel="shortcut icon" href="../images/favicon.ico" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="../images/apple-touch-icon.png"
+    />
+    <link rel="manifest" href="../images/site.webmanifest" />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <img src="./images/pubmedbridge.png" alt="PubMedBridge" class="logo" />
+
+    <h3>Country Resolution Algorithm Demo</h3>
+
+    <textarea
+      id="affilInput"
+      placeholder="Enter affiliation(s): one per line or separated by semicolons:
+ 
+Deutsches Herzzentrum der Charité, Campus Virchow Klinikum, Berlin, Germany
+Department of Cardiology, Loyola University Medical Centre, Maywood, Illinois
+Division of Cardiology, Yokohama City University Medical Center
+OR
+Deutsches Herzzentrum der Charité, Campus Virchow Klinikum, Berlin, Germany; Department of Cardiology, Loyola University Medical Centre, Maywood, Illinois; Division of Cardiology, Yokohama City University Medical Center"
+    ></textarea>
+    <br />
+    <button id="resolveBtn" disabled>Resolve Countries (Ctrl/Cmd+Enter)</button>
+
+    <div id="results-section">
+      <pre id="results"></pre>
+    </div>
+
+    <footer>
+      <p>
+        This demo showcases the country resolution algorithm from <br />
+        <strong>
+          <a
+            href="https://pubmedbridge.drmyo.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="clickable-link"
+          >
+            <i class="bi bi-box-arrow-up-right"> </i> PubMedBridge</a
+          ></strong
+        >
+        : A Preprocessor for Auditable Country-Level Affiliation Resolution in
+        Bibliometric Research.
+      </p>
+    </footer>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

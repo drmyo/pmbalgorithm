@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+
+title: "pmbalgorithm"
+abstract: "A browser-based showcase for the PubMedBridge country resolution algorithm."
+
+type: software
+version: "v1.0.0"
+date-released: 2026-01-11
+license: MIT
+
+authors:
+  - given-names: Myo
+    family-names: Tha
+    email: ktmyo@mahsa.edu.my
+    orcid: https://orcid.org/0000-0003-3973-2412
+    affiliation: Faculty of Medicine, MAHSA University, Malaysia
+
+  - given-names: Nilar
+    family-names: Khin
+    email: nilarkhin@mahsa.edu.my
+    orcid: https://orcid.org/0000-0002-9173-0337
+    affiliation: Faculty of Medicine, MAHSA University, Malaysia
+
+repository-code: https://github.io/pmbalgorithm
+url: https://pmbalgorithm.drmyo.com
+
+references:
+  - type: software
+    title: "PubMedBridge: A Preprocessor for Auditable Country-Level Affiliation Resolution in Bibliometric Research"
+    notes: "Private related software used by pmbalgorithm"
