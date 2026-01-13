@@ -1,0 +1,189 @@
+<!--
+This app minimizes the ROR schema v1 JSON file to a version containing only the essential fields (name, aliases, city and country).
+User needs to download the latest version of the JSON file from https://zenodo.org/records/7004824 and upload it to this app.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ROR JSON Minimizer</title>
+    <link rel="stylesheet" href="common-styles.css" />
+    <style>
+      .file-input-wrapper {
+        margin-bottom: 20px;
+      }
+      .file-input-wrapper input[type="file"] {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        border: 2px #cfe0ff;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: border-color 0.2s ease;
+        background: #f5f9ff;
+      }
+      .file-input-wrapper input[type="file"]:hover {
+        border-color: #2563eb;
+      }
+      #status {
+        color: #4a6fa5;
+        font-size: 14px;
+        margin-top: 20px;
+        background: #f5f9ff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #cfe0ff;
+        min-height: 20px;
+        display: none;
+      }
+      #status.visible {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ROR JSON Converter</h1>
+      <p class="subtitle">
+        Minimize ROR schema v1 JSON to essential fields only
+      </p>
+
+      <div class="file-input-wrapper">
+        <input type="file" id="fileInput" accept=".json" />
+      </div>
+
+      <div id="status"></div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const status = document.getElementById("status");
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) handleFile(file);
+      });
+
+      function handleFile(file) {
+        if (!file.name.endsWith(".json")) {
+          showStatus("Please select a valid JSON file.");
+          return;
+        }
+
+        showStatus(`Processing ${file.name}...`);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const rorData = JSON.parse(e.target.result);
+            const simplified = convertRorToSimpleFormat(rorData);
+            downloadFile(simplified, "rorDataset.json");
+            showStatus(
+              `Conversion complete! Processed ${simplified.length} institutions.`
+            );
+          } catch (error) {
+            showStatus(`❌ Error: ${error.message}`);
+          }
+        };
+        reader.onerror = () => {
+          showStatus("❌ Error reading file.");
+        };
+        reader.readAsText(file);
+      }
+
+      function convertRorToSimpleFormat(rorData) {
+        const simplifiedInstitutions = [];
+
+        for (const institution of rorData) {
+          // Detect schema version and extract data accordingly
+          let name = "";
+          let aliases = [];
+          let city = "";
+          let country = "";
+
+          // Check if this is schema v2 (has 'names' array) or v1 (has 'name' field)
+          if (institution.names && Array.isArray(institution.names)) {
+            // Schema v2
+            // Extract primary name (ror_display or label)
+            const primaryName = institution.names.find(
+              (n) =>
+                n.types &&
+                (n.types.includes("ror_display") || n.types.includes("label"))
+            );
+            name = primaryName ? primaryName.value : "";
+
+            // Extract aliases
+            const aliasEntries = institution.names.filter(
+              (n) => n.types && n.types.includes("alias")
+            );
+            aliases = aliasEntries.map((a) => a.value);
+
+            // Extract city and country from locations
+            const locations = institution.locations || [];
+            if (locations.length > 0 && locations[0].geonames_details) {
+              city = locations[0].geonames_details.name || "";
+              country = locations[0].geonames_details.country_name || "";
+            }
+          } else {
+            // Schema v1
+            name = institution.name || "";
+            aliases = institution.aliases || [];
+
+            // Extract city from addresses array
+            const addresses = institution.addresses || [];
+            if (addresses.length > 0) {
+              city = addresses[0].city || "";
+            }
+
+            // Extract country name
+            const countryObj = institution.country || {};
+            if (countryObj) {
+              country = countryObj.country_name || "";
+            }
+          }
+
+          // Create simplified entry
+          const simplifiedEntry = {
+            name: name,
+            aliases: aliases,
+            city: city,
+            country: country,
+          };
+
+          simplifiedInstitutions.push(simplifiedEntry);
+        }
+
+        return simplifiedInstitutions;
+      }
+
+      function downloadFile(data, filename) {
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function showStatus(message) {
+        status.textContent = message;
+        status.classList.add("visible");
+      }
+    </script>
+
+    <footer class="custom-footer">
+      <p class="footer-credits">
+        Helper to PubMedBridge<br />
+        ⚠️ This tool processes files locally in your browser. We do not validate
+        or sanitize content. Only upload files you trust. ⚠️
+      </p>
+    </footer>
+  </body>
+</html>

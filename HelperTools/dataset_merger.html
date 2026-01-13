@@ -1,0 +1,234 @@
+<!--
+  Institution Dataset Merger Tool
+  This tool attempts to deduplicate and merge institution records from OpenAlex and ROR datasets based on institution name and country.
+  
+  Usage:
+    1. Select two JSON files.
+    2. Click "Deduplicate & Download" to process and download the deduplicated dataset.
+-->
+
+<!-- NOTE:
+  The original OpenAlex and ROR data may contain internal duplications.
+  The OpenAlex dataset contains institution records with missing country information.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Deduplicate Institutions</title>
+    <link rel="stylesheet" href="common-styles.css" />
+    <style>
+      .file-input-wrapper {
+        margin-bottom: 15px;
+      }
+      .file-input-wrapper input[type="file"] {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #cfe0ff;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: border-color 0.2s ease;
+        background: #f5f9ff;
+        margin-bottom: 10px;
+      }
+      .file-input-wrapper input[type="file"]:hover {
+        border-color: #2563eb;
+      }
+      #status {
+        color: #4a6fa5;
+        font-size: 14px;
+        margin-top: 20px;
+        white-space: pre-line;
+        background: #f5f9ff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #cfe0ff;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Deduplicate and Merge Institutions</h1>
+      <p class="subtitle">
+        Select OpenAlex Dataset and ROR Dataset JSON files to deduplicate and
+        merge
+      </p>
+
+      <div class="file-input-wrapper">
+        <input type="file" id="file1" accept=".json" />
+        <input type="file" id="file2" accept=".json" />
+      </div>
+
+      <button id="dedupeBtn" class="download-btn">
+        Deduplicate & Download
+      </button>
+
+      <p id="status"></p>
+    </div>
+
+    <script>
+      const file1Input = document.getElementById("file1");
+      const file2Input = document.getElementById("file2");
+      const dedupeBtn = document.getElementById("dedupeBtn");
+      const statusEl = document.getElementById("status");
+
+      // Normalize country names before deduplication
+      // Currently, The Netherlands is normalized to Netherlands
+      // Developers may add more rules as needed
+      const normalizeCountry = (country) => {
+        if (!country) return "";
+        const normalized = country.trim();
+        if (normalized.toLowerCase() === "the netherlands") {
+          return "Netherlands";
+        }
+        return normalized;
+      };
+
+      dedupeBtn.addEventListener("click", async () => {
+        const file1 = file1Input.files[0];
+        const file2 = file2Input.files[0];
+        if (!file1 || !file2) {
+          alert("Please select both JSON files.");
+          return;
+        }
+
+        statusEl.textContent = "Reading files...";
+
+        try {
+          const [data1, data2] = await Promise.all([
+            file1.text(),
+            file2.text(),
+          ]);
+          const institutions1 = JSON.parse(data1);
+          const institutions2 = JSON.parse(data2);
+
+          statusEl.textContent = `Loaded ${institutions1.length} from ${file1.name} and ${institutions2.length} from ${file2.name}.\nStarting deduplication...`;
+
+          const allInstitutions = institutions1.concat(institutions2);
+          const byNameCountry = {};
+
+          statusEl.textContent += `\nBuilding indices...`;
+
+          allInstitutions.forEach((inst, i) => {
+            const name = (inst.name || "").trim();
+            const country = normalizeCountry(inst.country);
+            const city = (inst.city || "").trim();
+            if (!name) return;
+
+            // Update the country in the original object
+            inst.country = country;
+
+            const nameLower = name.toLowerCase();
+
+            if (country) {
+              const key = `${nameLower}|${country.toLowerCase()}`;
+              if (!byNameCountry[key]) byNameCountry[key] = [];
+              byNameCountry[key].push(i);
+            }
+          });
+
+          const processed = new Set();
+          const groups = [];
+
+          statusEl.textContent += `\nGrouping duplicates...`;
+
+          allInstitutions.forEach((inst, i) => {
+            if (processed.has(i)) return;
+            const name = (inst.name || "").trim();
+            if (!name) return;
+            const country = (inst.country || "").trim();
+            const nameLower = name.toLowerCase();
+
+            const matchingIndices = new Set([i]);
+
+            if (country) {
+              const key = `${nameLower}|${country.toLowerCase()}`;
+              if (byNameCountry[key])
+                byNameCountry[key].forEach((idx) => matchingIndices.add(idx));
+            }
+
+            groups.push(
+              [...matchingIndices].map((idx) => allInstitutions[idx])
+            );
+            matchingIndices.forEach((idx) => processed.add(idx));
+          });
+
+          statusEl.textContent += `\nMerging duplicates...`;
+
+          const deduplicated = [];
+          let duplicatesRemoved = 0;
+
+          groups.forEach((group) => {
+            if (group.length === 1) {
+              if (group[0].country) deduplicated.push(group[0]);
+            } else {
+              duplicatesRemoved += group.length - 1;
+
+              const allAliases = [];
+              group.forEach((inst) => {
+                if (inst.aliases && Array.isArray(inst.aliases))
+                  allAliases.push(...inst.aliases);
+              });
+
+              const uniqueAliases = [];
+              const seen = new Set();
+              allAliases.forEach((a) => {
+                if (a && !seen.has(a.toLowerCase())) {
+                  seen.add(a.toLowerCase());
+                  uniqueAliases.push(a);
+                }
+              });
+
+              // Choose best record: prefer one with country
+              let best = group[0];
+              for (const inst of group) {
+                if (inst.country && !best.country) {
+                  best = inst;
+                  break;
+                }
+              }
+
+              const merged = {
+                name: best.name || "",
+                aliases: uniqueAliases,
+                city: best.city || "",
+                country: best.country || "",
+              };
+
+              if (merged.country) deduplicated.push(merged);
+            }
+          });
+
+          // Generate JSON file for download
+          const blob = new Blob([JSON.stringify(deduplicated, null, 2)], {
+            type: "application/json;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "deduplicated_institutions.json";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+
+          statusEl.textContent += `\nDeduplication complete!\nDuplicates removed: ${duplicatesRemoved}\nUnique institutions: ${deduplicated.length}\nDownload ready.`;
+        } catch (e) {
+          console.error(e);
+          alert("Error processing files. Check console for details.");
+        }
+      });
+    </script>
+    <footer class="custom-footer">
+      <p class="footer-credits">
+        Helper to PubMedBridge<br />
+        ⚠️ This tool processes files locally in your browser. We do not validate
+        or sanitize content. ⚠️
+      </p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,303 @@
+<!--
+This app downloads OpenAlex institutions from https://api.openalex.org/works using its API
+and converts them to a JSON file containing only the essential fields (name, aliases, city and country)
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OpenAlex Institutions Downloader</title>
+    <link rel="stylesheet" href="common-styles.css" />
+    <style>
+      .pause-btn {
+        width: 100%;
+        padding: 14px 24px;
+        background: #f59e0b;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+      }
+      .pause-btn:hover {
+        background: #d97706;
+      }
+      .pause-btn.resume {
+        background: #10b981;
+      }
+      .pause-btn.resume:hover {
+        background: #059669;
+      }
+      #progress-container {
+        width: 100%;
+        background-color: #e2ecff;
+        border-radius: 12px;
+        margin-top: 20px;
+        overflow: hidden;
+        border: 1px solid #cfe0ff;
+      }
+      #progress-bar {
+        width: 0%;
+        height: 28px;
+        background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+        text-align: center;
+        color: white;
+        border-radius: 12px;
+        line-height: 28px;
+        transition: width 0.3s ease;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      #status {
+        color: #4a6fa5;
+        font-size: 14px;
+        text-align: center;
+        margin-top: 15px;
+        min-height: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>OpenAlex Institutions Downloader</h1>
+      <p class="subtitle">
+        Download institution data from OpenAlex API and convert to JSON
+        containing essential fields only
+      </p>
+
+      <button id="downloadBtn" class="download-btn">Start Download</button>
+      <button id="pauseBtn" class="pause-btn" style="display: none">
+        Pause
+      </button>
+
+      <div id="progress-container">
+        <div id="progress-bar">0%</div>
+      </div>
+
+      <p id="status"></p>
+    </div>
+
+    <script>
+      const BASE = "https://api.openalex.org/institutions";
+      const FIELDS = "display_name,display_name_alternatives,country_code,geo";
+      const PER_PAGE = 200;
+      const EMAIL = "your-email@example.com";
+
+      const progressBar = document.getElementById("progress-bar");
+      const statusEl = document.getElementById("status");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+
+      let isPaused = false;
+      let pauseStartTime = 0;
+      let totalPausedTime = 0;
+      let isConnected = false;
+
+      const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+      function getCountryName(code) {
+        if (!code) return null;
+        try {
+          return regionNames.of(code) || code;
+        } catch {
+          return code;
+        }
+      }
+
+      // Test connection on page load
+      (async function testConnection() {
+        downloadBtn.disabled = true;
+        downloadBtn.textContent = "Checking connection...";
+        statusEl.textContent = "Testing connection to OpenAlex API...";
+
+        const startTest = Date.now();
+
+        try {
+          const testParams = new URLSearchParams({
+            "per-page": 1,
+            select: FIELDS,
+            mailto: EMAIL,
+            cursor: "*",
+          });
+          const testResponse = await fetch(`${BASE}?${testParams}`);
+          if (!testResponse.ok) {
+            throw new Error(`Connection failed: ${testResponse.status}`);
+          }
+          const testData = await testResponse.json();
+
+          const elapsed = Date.now() - startTest;
+          const minDelay = 1500;
+          if (elapsed < minDelay) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, minDelay - elapsed)
+            );
+          }
+
+          isConnected = true;
+          statusEl.textContent = `✓ Connected! Found ${
+            testData.meta?.count || 0
+          } institutions available for download.`;
+          downloadBtn.disabled = false;
+          downloadBtn.textContent = "Start Download";
+        } catch (err) {
+          console.error(err);
+
+          const elapsed = Date.now() - startTest;
+          const minDelay = 1500;
+          if (elapsed < minDelay) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, minDelay - elapsed)
+            );
+          }
+
+          statusEl.textContent =
+            "✗ Connection failed. Please refresh the page to try again.";
+          downloadBtn.textContent = "Connection Failed";
+          downloadBtn.disabled = true;
+        }
+      })();
+
+      downloadBtn.addEventListener("click", async () => {
+        if (!isConnected) {
+          alert("Not connected to OpenAlex API. Please refresh the page.");
+          return;
+        }
+
+        let cursor = "*";
+        let institutions = [];
+        let totalCount = 0;
+        let estimatedTotal = 0;
+        const startTime = Date.now();
+
+        downloadBtn.style.display = "none";
+        pauseBtn.style.display = "block";
+        isPaused = false;
+        totalPausedTime = 0;
+
+        statusEl.textContent = "Starting download...";
+
+        while (cursor) {
+          while (isPaused) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+
+          const params = new URLSearchParams({
+            "per-page": PER_PAGE,
+            select: FIELDS,
+            mailto: EMAIL,
+            cursor: cursor,
+          });
+
+          try {
+            const response = await fetch(`${BASE}?${params}`);
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const data = await response.json();
+
+            estimatedTotal = data.meta?.count || estimatedTotal;
+
+            const results = data.results || [];
+            for (const inst of results) {
+              const record = {
+                name: inst.display_name,
+                aliases: inst.display_name_alternatives || [],
+                city: inst.geo?.city || null,
+                country: getCountryName(inst.country_code),
+              };
+              institutions.push(record);
+              totalCount++;
+            }
+
+            const elapsed = Date.now() - startTime - totalPausedTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            const timeStr = `${hours.toString().padStart(2, "0")}:${minutes
+              .toString()
+              .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+            if (estimatedTotal > 0) {
+              const percent = Math.min(
+                100,
+                Math.round((totalCount / estimatedTotal) * 100)
+              );
+              progressBar.style.width = percent + "%";
+              progressBar.textContent = `${percent}% - ${timeStr}`;
+            } else {
+              progressBar.textContent = `${totalCount} - ${timeStr}`;
+            }
+
+            statusEl.textContent = `Downloading... ${totalCount} / ${estimatedTotal} institutions processed`;
+
+            cursor = data.meta?.next_cursor || null;
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          } catch (err) {
+            console.error(err);
+            alert("Error fetching data. See console for details.");
+            break;
+          }
+        }
+
+        // Create download
+        const blob = new Blob([JSON.stringify(institutions, null, 2)], {
+          type: "application/json;charset=utf-8",
+        });
+        const filename = "institutions.json";
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        const finalElapsed = Date.now() - startTime - totalPausedTime;
+        const finalHours = Math.floor(finalElapsed / 3600000);
+        const finalMinutes = Math.floor((finalElapsed % 3600000) / 60000);
+        const finalSeconds = Math.floor((finalElapsed % 60000) / 1000);
+        const finalTimeStr = `${finalHours
+          .toString()
+          .padStart(2, "0")}:${finalMinutes
+          .toString()
+          .padStart(2, "0")}:${finalSeconds.toString().padStart(2, "0")}`;
+
+        statusEl.textContent = `Download complete! ${totalCount} institutions saved as JSON.`;
+        progressBar.style.width = "100%";
+        progressBar.textContent = `100% - ${finalTimeStr}`;
+
+        pauseBtn.style.display = "none";
+        downloadBtn.style.display = "block";
+      });
+
+      pauseBtn.addEventListener("click", () => {
+        if (!isPaused) {
+          isPaused = true;
+          pauseStartTime = Date.now();
+          pauseBtn.textContent = "Resume";
+          pauseBtn.classList.add("resume");
+          statusEl.textContent = "Download paused. Click Resume to continue.";
+        } else {
+          isPaused = false;
+          totalPausedTime += Date.now() - pauseStartTime;
+          pauseBtn.textContent = "Pause";
+          pauseBtn.classList.remove("resume");
+          statusEl.textContent = "Resuming download...";
+        }
+      });
+    </script>
+    <footer class="custom-footer">
+      <p class="footer-credits">
+        Helper to PubMedBridge<br />
+        ⚠️ This tool processes files locally in your browser. We do not validate
+        or sanitize content. ⚠️
+      </p>
+    </footer>
+  </body>
+</html>
